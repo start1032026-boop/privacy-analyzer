@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrivacyLens — AI Digital Trust Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #ff4d6d;
+    --accent2: #f9c74f;
+    --accent3: #43d9ad;
+    --accent4: #7c6af7;
+    --text: #e8e8f0;
+    --muted: #5a5a78;
+    --card: #13131c;
+    --card2: #0f0f18;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh; overflow-x: hidden;
+  }
+
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,77,109,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,77,109,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 56px 24px 80px; position: relative; z-index: 1; }
+
+  header { margin-bottom: 40px; animation: fadeUp 0.6s ease both; }
+
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .logo-icon {
+    width: 34px; height: 34px; background: var(--accent);
+    clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.05rem; letter-spacing: 0.05em; }
+  .logo-text span { color: var(--accent); }
+
+  h1 { font-family: 'Syne', sans-serif; font-size: clamp(2rem,5vw,3.2rem); font-weight: 800; line-height: 1.1; margin-bottom: 12px; letter-spacing: -0.02em; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 0.82rem; letter-spacing: 0.03em; line-height: 1.6; }
+
+  /* Mode tabs */
+  .mode-tabs { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 20px; width: fit-content; animation: fadeUp 0.6s 0.05s ease both; }
+  .mode-tab { padding: 8px 20px; border-radius: 7px; border: none; background: transparent; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.75rem; letter-spacing: 0.06em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .mode-tab.active { background: var(--accent); color: white; }
+
+  /* Input section */
+  .input-section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 24px; animation: fadeUp 0.6s 0.1s ease both; transition: border-color 0.3s; }
+  .input-section:focus-within { border-color: rgba(255,77,109,0.5); }
+  .input-label { font-size: 0.68rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; display: block; }
+  .input-row { display: flex; gap: 10px; }
+  .input-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 11px 16px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.82rem; outline: none; transition: border-color 0.2s; }
+  .input-row input::placeholder { color: var(--muted); }
+  .input-row input:focus { border-color: var(--accent); }
+
+  /* Compare inputs */
+  .compare-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .compare-input-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; transition: border-color 0.3s; }
+  .compare-input-box:focus-within { border-color: rgba(255,77,109,0.4); }
+  .compare-vs { display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; color: var(--muted); font-size: 0.9rem; }
+  @media (max-width: 600px) { .compare-inputs { grid-template-columns: 1fr; } }
+
+  .btn-analyze { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 11px 22px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; white-space: nowrap; width: 100%; margin-top: 4px; }
+  .btn-analyze:hover { background: #ff2d50; transform: translateY(-1px); }
+  .btn-analyze:active { transform: translateY(0); }
+  .btn-analyze:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  /* Input tabs */
+  .input-tabs { display: flex; gap: 4px; background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; margin-bottom: 12px; width: fit-content; }
+  .input-tab { padding: 6px 14px; border-radius: 6px; border: none; background: transparent; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.06em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .input-tab.active { background: var(--border); color: var(--text); }
+
+  /* Loading */
+  .loading { display: none; align-items: center; gap: 12px; padding: 18px 0; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.04em; }
+  .loading.active { display: flex; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+  /* App info */
+  .app-info-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; display: flex; align-items: center; gap: 14px; }
+  .app-icon { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; background: var(--border); flex-shrink: 0; }
+  .app-icon-placeholder { width: 52px; height: 52px; border-radius: 12px; background: var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .app-meta { flex: 1; }
+  .app-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 3px; }
+  .app-dev { font-size: 0.72rem; color: var(--muted); margin-bottom: 5px; }
+  .app-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 0.62rem; padding: 3px 7px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .tag-cat { background: rgba(124,106,247,0.15); color: var(--accent4); border: 1px solid rgba(124,106,247,0.2); }
+  .tag-src { background: rgba(67,217,173,0.1); color: var(--accent3); border: 1px solid rgba(67,217,173,0.2); }
+
+  /* Score card */
+  .score-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 14px; display: flex; align-items: center; gap: 24px; }
+  .score-ring { position: relative; width: 90px; height: 90px; flex-shrink: 0; }
+  .score-ring svg { transform: rotate(-90deg); width: 90px; height: 90px; }
+  .score-ring-bg { fill: none; stroke: var(--border); stroke-width: 7; }
+  .score-ring-fill { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1); }
+  .score-number { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; line-height: 1; }
+  .score-number small { font-size: 0.5rem; font-weight: 400; color: var(--muted); letter-spacing: 0.08em; font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .grade-badge { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.9rem; border: 2px solid currentColor; margin-top: 5px; }
+  .score-info { flex: 1; }
+  .score-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+  .score-summary { font-size: 0.75rem; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+  .breakdown { display: flex; flex-direction: column; gap: 5px; }
+  .breakdown-row { display: flex; align-items: center; gap: 8px; }
+  .breakdown-label { font-size: 0.65rem; color: var(--muted); width: 110px; flex-shrink: 0; }
+  .breakdown-track { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .breakdown-fill { height: 100%; border-radius: 2px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+  .breakdown-val { font-size: 0.65rem; color: var(--muted); width: 28px; text-align: right; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .info-card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  .flag-item { display: flex; align-items: flex-start; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.76rem; line-height: 1.5; opacity: 0; transform: translateX(-6px); animation: slideIn 0.4s ease forwards; }
+  .flag-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .flag-dot { width: 5px; height: 5px; background: var(--accent); border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+
+  /* Exodus-style tracker cards */
+  .exodus-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .exodus-counts { display: flex; gap: 8px; }
+  .exodus-badge { display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.8rem; }
+  .exodus-badge-num { font-size: 1rem; font-weight: 800; }
+  .exodus-badge-tracker { background: rgba(255,77,109,0.12); border: 1px solid rgba(255,77,109,0.25); color: var(--accent); }
+  .exodus-badge-perm { background: rgba(249,199,79,0.1); border: 1px solid rgba(249,199,79,0.25); color: var(--accent2); }
+  .exodus-version { font-size: 0.68rem; color: var(--muted); }
+  .exodus-link { font-size: 0.65rem; color: var(--accent4); text-decoration: none; border: 1px solid rgba(124,106,247,0.3); padding: 3px 8px; border-radius: 4px; transition: all 0.2s; }
+  .exodus-link:hover { background: rgba(124,106,247,0.1); }
+
+  .tracker-category-section { margin-bottom: 12px; }
+  .tracker-category-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .tracker-category-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .tracker-list { display: flex; flex-direction: column; gap: 5px; }
+  .tracker-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--card2); border-radius: 8px; font-size: 0.75rem; border: 1px solid var(--border); transition: border-color 0.2s; }
+  .tracker-item:hover { border-color: rgba(255,77,109,0.3); }
+  .tracker-item-left { display: flex; align-items: center; gap: 8px; }
+  .tracker-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .tracker-name { font-size: 0.75rem; }
+  .tracker-badges { display: flex; gap: 5px; align-items: center; }
+  .tracker-badge { font-size: 0.58rem; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .tracker-high { background: rgba(255,77,109,0.15); color: var(--accent); border: 1px solid rgba(255,77,109,0.2); }
+  .tracker-normal { background: rgba(249,199,79,0.1); color: var(--accent2); border: 1px solid rgba(249,199,79,0.15); }
+  .tracker-cat-badge { background: rgba(124,106,247,0.1); color: var(--accent4); border: 1px solid rgba(124,106,247,0.15); }
+
+  .perm-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .perm-section-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+  .perm-scroll { display: flex; flex-wrap: wrap; gap: 5px; max-height: 100px; overflow-y: auto; }
+
+  .stat-item { padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.76rem; }
+  .stat-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .stat-label { color: var(--muted); font-size: 0.65rem; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .worst-card { background: rgba(255,77,109,0.05); border: 1px solid rgba(255,77,109,0.18); border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; }
+  .worst-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .worst-text { font-size: 0.78rem; color: #c8c8d8; line-height: 1.65; }
+
+  .perm-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .perm-pill { font-size: 0.62rem; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.04em; }
+  .perm-high { background: rgba(255,77,109,0.12); color: var(--accent); border: 1px solid rgba(255,77,109,0.2); }
+  .perm-med { background: rgba(249,199,79,0.1); color: var(--accent2); border: 1px solid rgba(249,199,79,0.2); }
+
+  .error-card { background: rgba(255,77,109,0.06); border: 1px solid rgba(255,77,109,0.3); border-radius: 12px; padding: 16px 20px; font-size: 0.8rem; color: var(--accent); }
+
+  /* ===== COMPARISON VIEW ===== */
+  .compare-header { text-align: center; margin-bottom: 24px; }
+  .compare-header h2 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; margin-bottom: 6px; }
+  .compare-header p { font-size: 0.76rem; color: var(--muted); }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .compare-grid { grid-template-columns: 1fr; } }
+
+  .compare-col { display: flex; flex-direction: column; gap: 12px; }
+  .compare-col-label { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; text-align: center; }
+
+  .compare-score-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+  .compare-score-big { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 3rem; line-height: 1; margin-bottom: 4px; }
+  .compare-score-sub { font-size: 0.7rem; color: var(--muted); margin-bottom: 8px; }
+  .compare-grade { display: inline-block; padding: 4px 12px; border-radius: 6px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.85rem; border: 2px solid currentColor; margin-bottom: 8px; }
+  .compare-risk { font-size: 0.75rem; font-weight: 600; }
+
+  .compare-winner { background: rgba(67,217,173,0.08); border: 1px solid rgba(67,217,173,0.3); border-radius: 12px; padding: 14px 18px; text-align: center; margin-bottom: 16px; }
+  .compare-winner-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .compare-winner-name { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--accent3); }
+
+  .compare-stat-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+  .compare-stat-row:last-child { border-bottom: none; }
+  .compare-stat-label { font-size: 0.68rem; color: var(--muted); flex: 1; text-transform: uppercase; letter-spacing: 0.06em; }
+  .compare-stat-val { font-size: 0.78rem; font-weight: 600; }
+  .compare-better { color: var(--accent3); }
+  .compare-worse { color: var(--accent); }
+
+  /* Animations */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { margin-top: 60px; text-align: center; font-size: 0.7rem; color: var(--muted); letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🔍</div>
+      <div class="logo-text">Privacy<span>Lens</span></div>
+    </div>
+    <h1>Know what you're<br><em>agreeing to.</em></h1>
+    <p class="subtitle">Search any app or paste a privacy policy URL — get an instant AI-powered<br>risk analysis with trackers, permissions, and a full privacy score.</p>
+  </header>
+
+  <!-- Mode tabs -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('single')" id="mode-single">🔍 Analyze</button>
+    <button class="mode-tab" onclick="switchMode('compare')" id="mode-compare">⚖️ Compare</button>
+  </div>
+
+  <!-- SINGLE MODE -->
+  <div id="single-mode">
+    <div class="input-tabs">
+      <button class="input-tab active" onclick="switchTab('app')" id="tab-app">📱 App Name</button>
+      <button class="input-tab" onclick="switchTab('url')" id="tab-url">🔗 Policy URL</button>
+    </div>
+    <div class="input-section">
+      <label class="input-label" id="input-label">Search by App Name</label>
+      <div class="input-row">
+        <input id="mainInput" type="text" placeholder="e.g. Instagram, TikTok, WhatsApp..." />
+        <button class="btn-analyze" style="width:auto;margin:0" onclick="analyze()" id="analyzeBtn">
+          <span id="btnText">Analyze →</span>
+        </button>
+      </div>
+    </div>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span id="loadingText">Scanning for privacy risks...</span>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <!-- COMPARE MODE -->
+  <div id="compare-mode" style="display:none">
+    <div class="compare-inputs">
+      <div class="compare-input-box">
+        <div class="input-label">App 1</div>
+        <input id="compareInput1" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.82rem;outline:none;" placeholder="e.g. Instagram" />
+      </div>
+      <div class="compare-vs">VS</div>
+      <div class="compare-input-box">
+        <div class="input-label">App 2</div>
+        <input id="compareInput2" type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.82rem;outline:none;" placeholder="e.g. Signal" />
+      </div>
+    </div>
+    <button class="btn-analyze" onclick="compare()" id="compareBtn">Compare Apps →</button>
+    <div class="loading" id="compareLoading" style="margin-top:16px">
+      <div class="spinner"></div>
+      <span>Analyzing both apps...</span>
+    </div>
+    <div id="compareResult" style="margin-top:20px"></div>
+  </div>
+
+  <footer>PrivacyLens v2.1 · AI-Powered · For informational purposes only</footer>
+</div>
+
+<script>
+let currentTab = 'app';
+let currentMode = 'single';
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-single').classList.toggle('active', mode === 'single');
+  document.getElementById('mode-compare').classList.toggle('active', mode === 'compare');
+  document.getElementById('single-mode').style.display = mode === 'single' ? 'block' : 'none';
+  document.getElementById('compare-mode').style.display = mode === 'compare' ? 'block' : 'none';
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-app').classList.toggle('active', tab === 'app');
+  document.getElementById('tab-url').classList.toggle('active', tab === 'url');
+  const input = document.getElementById('mainInput');
+  const label = document.getElementById('input-label');
+  if (tab === 'app') {
+    input.placeholder = 'e.g. Instagram, TikTok, WhatsApp...';
+    label.textContent = 'Search by App Name';
+  } else {
+    input.placeholder = 'https://example.com/privacy-policy';
+    label.textContent = 'Privacy Policy URL';
+  }
+  document.getElementById('result').innerHTML = '';
+}
+
+function getScoreColor(score) {
+  if (score >= 70) return '#43d9ad';
+  if (score >= 45) return '#f9c74f';
+  if (score >= 20) return '#ff8c42';
+  return '#ff4d6d';
+}
+
+function getRiskLabel(level) {
+  return { LOW: '✓ Low Risk', MODERATE: '⚡ Moderate Risk', HIGH: '⚠ High Risk', CRITICAL: '☠ Critical Risk' }[level] || level;
+}
+
+async function fetchAnalysis(appName) {
+  const body = currentTab === 'app' || appName ? { app_name: appName } : { url: appName };
+  const response = await fetch('http://127.0.0.1:8000/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || `Server error ${response.status}`);
+  }
+  return await response.json();
+}
+
+async function analyze() {
+  const val = document.getElementById('mainInput').value.trim();
+  if (!val) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  const loading = document.getElementById('loading');
+  const result = document.getElementById('result');
+
+  btn.disabled = true;
+  document.getElementById('btnText').textContent = 'Analyzing...';
+  loading.classList.add('active');
+  document.getElementById('loadingText').textContent = currentTab === 'app' ? 'Looking up app & scanning...' : 'Fetching & analyzing policy...';
+  result.innerHTML = '';
+
+  try {
+    const body = currentTab === 'app' ? { app_name: val } : { url: val };
+    const response = await fetch('http://127.0.0.1:8000/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || `Server error ${response.status}`);
+    }
+    const d = await response.json();
+    result.innerHTML = renderSingle(d);
+    animateResults();
+  } catch (err) {
+    result.innerHTML = `<div class="error-card">⚠ ${err.message || 'Could not connect. Make sure the backend is running.'}</div>`;
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btnText').textContent = 'Analyze →';
+    loading.classList.remove('active');
+  }
+}
+
+async function compare() {
+  const app1 = document.getElementById('compareInput1').value.trim();
+  const app2 = document.getElementById('compareInput2').value.trim();
+  if (!app1 || !app2) return;
+
+  const btn = document.getElementById('compareBtn');
+  const loading = document.getElementById('compareLoading');
+  const result = document.getElementById('compareResult');
+
+  btn.disabled = true;
+  btn.textContent = 'Comparing...';
+  loading.classList.add('active');
+  result.innerHTML = '';
+
+  try {
+    const [d1, d2] = await Promise.all([
+      fetchAnalysis(app1),
+      fetchAnalysis(app2)
+    ]);
+    result.innerHTML = renderComparison(d1, d2, app1, app2);
+    animateCompare();
+  } catch (err) {
+    result.innerHTML = `<div class="error-card">⚠ ${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Compare Apps →';
+    loading.classList.remove('active');
+  }
+}
+
+function renderSingle(d) {
+  const score = d.privacy_score ?? 50;
+  const color = getScoreColor(score);
+  const circumference = 2 * Math.PI * 34;
+  const offset = circumference - (score / 100) * circumference;
+  const level = d.risk_level || 'MODERATE';
+  const grade = d.grade || 'C';
+  const breakdown = d.breakdown || {};
+  const trackers = d.trackers || {};
+  const trackerList = trackers.trackers || [];
+  const trackerDetails = trackers.tracker_details || [];
+  const highRisk = trackers.high_risk_trackers || [];
+  const permCount = trackers.permission_count || 0;
+  const trackerVersion = trackers.version || '';
+  const categoryCounts = trackers.category_counts || {};
+  const exodusUrl = trackers.exodus_url || '';
+  const exodusPerms = trackers.permissions || [];
+  const permAnalysis = d.permission_analysis || {};
+  const flags = d.top_red_flags || [];
+  const appInfo = d.app_info;
+  const dataShared = d.data_shared_with || [];
+
+  let html = '';
+
+  if (appInfo) {
+    html += `
+    <div class="app-info-card" style="animation:fadeUp 0.4s ease both">
+      ${appInfo.icon ? `<img class="app-icon" src="${appInfo.icon}" alt="${appInfo.name}" onerror="this.style.display='none'">` : `<div class="app-icon-placeholder">📱</div>`}
+      <div class="app-meta">
+        <div class="app-name">${appInfo.name}</div>
+        <div class="app-dev">${appInfo.developer} · ⭐ ${appInfo.rating || 'N/A'} · ${appInfo.installs || ''} installs</div>
+        <div class="app-tags">
+          <span class="tag tag-cat">${appInfo.category || 'App'}</span>
+          <span class="tag tag-src">${appInfo.source === 'playstore' ? 'Google Play' : appInfo.source === 'appstore' ? 'App Store' : 'Known'}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  html += `
+  <div class="score-card" style="animation:fadeUp 0.4s 0.05s ease both">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div class="score-ring">
+        <svg viewBox="0 0 90 90">
+          <circle class="score-ring-bg" cx="45" cy="45" r="34"/>
+          <circle class="score-ring-fill" cx="45" cy="45" r="34" stroke="${color}"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}" id="ringFill"/>
+        </svg>
+        <div class="score-number" style="color:${color}">${score}<small>/100</small></div>
+      </div>
+      <div class="grade-badge" style="color:${color}">${grade}</div>
+    </div>
+    <div class="score-info">
+      <div class="score-title" style="color:${color}">${getRiskLabel(level)}</div>
+      <div class="score-summary">${d.summary || ''}</div>
+      <div class="breakdown">
+        ${renderBar('Policy Risk', breakdown.policy_risk || 0, 35, '#ff4d6d')}
+        ${renderBar('Tracker Risk', breakdown.tracker_risk || 0, 25, '#f9c74f')}
+        ${renderBar('Permission Risk', breakdown.permission_risk || 0, 20, '#ff8c42')}
+        ${renderBar('Retention Risk', breakdown.retention_risk || 0, 10, '#c084fc')}
+        ${renderBar('User Control', breakdown.control_risk || 0, 10, '#60a5fa')}
+      </div>
+    </div>
+  </div>`;
+
+  html += `<div class="grid-2">`;
+
+  if (flags.length) {
+    html += `
+    <div class="info-card" style="animation:fadeUp 0.4s 0.1s ease both">
+      <div class="info-card-title" style="color:var(--accent2)">⚑ Red Flags</div>
+      ${flags.map((f, i) => `<div class="flag-item" style="animation-delay:${0.05+i*0.08}s"><div class="flag-dot"></div><span>${f}</span></div>`).join('')}
+    </div>`;
+  }
+
+  html += `
+  <div class="info-card" style="animation:fadeUp 0.4s 0.12s ease both">
+    <div class="exodus-header">
+      <div class="info-card-title" style="color:var(--accent);margin-bottom:0">📡 Tracker Report</div>
+      ${exodusUrl ? `<a href="${exodusUrl}" target="_blank" class="exodus-link">View on Exodus ↗</a>` : ''}
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <div class="exodus-badge exodus-badge-tracker">
+        <span class="exodus-badge-num">${trackerList.length}</span>
+        <span>tracker${trackerList.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="exodus-badge exodus-badge-perm">
+        <span class="exodus-badge-num">${permCount}</span>
+        <span>permission${permCount !== 1 ? 's' : ''}</span>
+      </div>
+      ${trackerVersion && trackerVersion !== 'Unknown' ? `<span class="exodus-version">v${trackerVersion}</span>` : ''}
+    </div>`;
+  if (!trackerList.length) {
+    html += `<div style="font-size:0.76rem;color:var(--muted)">No trackers detected${appInfo?.source === 'appstore' ? ' (iOS — tracker scan N/A)' : '. App may use no third-party trackers.'}</div>`;
+  } else {
+    // Group by category
+    const grouped = {};
+    trackerDetails.forEach(t => {
+      if (!grouped[t.category]) grouped[t.category] = [];
+      grouped[t.category].push(t);
+    });
+    const catIcons = { analytics: '📊', advertising: '📢', crash_reporting: '🐛', social: '👥', location: '📍', fingerprinting: '🔏', other: '🔹' };
+    Object.entries(grouped).forEach(([cat, items]) => {
+      html += `<div class="tracker-category-section">
+        <div class="tracker-category-label">${catIcons[cat] || '🔹'} ${cat.replace('_', ' ')}</div>
+        <div class="tracker-list">`;
+      items.forEach(t => {
+        const dotColor = t.high_risk ? '#ff4d6d' : '#f9c74f';
+        html += `<div class="tracker-item">
+          <div class="tracker-item-left">
+            <div class="tracker-dot" style="background:${dotColor}"></div>
+            <span class="tracker-name">${t.name}</span>
+          </div>
+          <div class="tracker-badges">
+            ${t.high_risk ? `<span class="tracker-badge tracker-high">High Risk</span>` : `<span class="tracker-badge tracker-normal">Tracker</span>`}
+          </div>
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+  }
+  // Exodus permissions section
+  if (exodusPerms.length) {
+    html += `<div class="perm-section">
+      <div class="perm-section-title">🔐 Permissions from Exodus (${exodusPerms.length})</div>
+      <div class="perm-scroll">
+        ${exodusPerms.slice(0, 30).map(p => {
+          const pName = p.split('.').pop().toLowerCase();
+          const isHigh = ['location','contacts','microphone','camera','call_log','sms','record_audio','read_contacts'].some(h => pName.includes(h));
+          return `<span class="perm-pill ${isHigh ? 'perm-high' : 'perm-med'}">${pName}</span>`;
+        }).join('')}
+        ${exodusPerms.length > 30 ? `<span style="font-size:0.65rem;color:var(--muted);align-self:center">+${exodusPerms.length - 30} more</span>` : ''}
+      </div>
+    </div>`;
+  }
+  html += `</div></div>`;
+
+  html += `<div class="grid-2">
+  <div class="info-card" style="animation:fadeUp 0.4s 0.14s ease both">
+    <div class="info-card-title" style="color:var(--accent3)">📋 Policy Details</div>
+    <div class="stat-item"><div class="stat-label">Data Retention</div><div>${d.data_retention || 'Not specified'}</div></div>
+    <div class="stat-item"><div class="stat-label">User Control</div><div>${d.user_control || 'Not specified'}</div></div>
+    <div class="stat-item"><div class="stat-label">Transparency Score</div><div style="color:${getScoreColor(d.transparency_score * 10)}">${d.transparency_score || '?'}/10</div></div>
+  </div>
+  <div class="info-card" style="animation:fadeUp 0.4s 0.16s ease both">
+    <div class="info-card-title" style="color:var(--accent4)">🔗 Data Shared With</div>
+    ${dataShared.length ? dataShared.map(e => `<div class="stat-item">${e}</div>`).join('') : '<div style="font-size:0.76rem;color:var(--muted)">None detected.</div>'}
+  </div></div>`;
+
+  const highPerms = permAnalysis.high_risk || [];
+  const medPerms = permAnalysis.medium_risk || [];
+  if (highPerms.length || medPerms.length) {
+    html += `
+    <div class="info-card" style="animation:fadeUp 0.4s 0.18s ease both;margin-bottom:14px">
+      <div class="info-card-title" style="color:var(--accent)">🔐 Permissions (${permAnalysis.total || 0} total)</div>
+      <div class="perm-list">
+        ${highPerms.map(p => `<span class="perm-pill perm-high">${p}</span>`).join('')}
+        ${medPerms.map(p => `<span class="perm-pill perm-med">${p}</span>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (d.worst_case) {
+    html += `
+    <div class="worst-card" style="animation:fadeUp 0.4s 0.2s ease both">
+      <div class="worst-title">⚠ Worst Case Scenario</div>
+      <div class="worst-text">${d.worst_case}</div>
+    </div>`;
+  }
+
+  return html;
+}
+
+function renderComparison(d1, d2, name1, name2) {
+  const s1 = d1.privacy_score ?? 50;
+  const s2 = d2.privacy_score ?? 50;
+  const winner = s1 >= s2 ? (d1.app_info?.name || name1) : (d2.app_info?.name || name2);
+  const c1 = getScoreColor(s1);
+  const c2 = getScoreColor(s2);
+
+  const appName1 = d1.app_info?.name || name1;
+  const appName2 = d2.app_info?.name || name2;
+
+  let html = `
+  <div class="compare-winner" style="animation:fadeUp 0.4s ease both">
+    <div class="compare-winner-label">🏆 More Privacy-Friendly</div>
+    <div class="compare-winner-name">${winner}</div>
+  </div>
+  <div class="compare-grid">
+    <div class="compare-col">
+      <div class="compare-col-label">${appName1}</div>
+      ${renderCompareScore(d1, c1)}
+      ${renderCompareDetails(d1, d2, true)}
+    </div>
+    <div class="compare-col">
+      <div class="compare-col-label">${appName2}</div>
+      ${renderCompareScore(d2, c2)}
+      ${renderCompareDetails(d2, d1, false)}
+    </div>
+  </div>`;
+
+  return html;
+}
+
+function renderCompareScore(d, color) {
+  const score = d.privacy_score ?? 50;
+  return `
+  <div class="compare-score-card" style="animation:fadeUp 0.4s 0.1s ease both">
+    <div class="compare-score-big" style="color:${color}">${score}</div>
+    <div class="compare-score-sub">/ 100</div>
+    <div class="compare-grade" style="color:${color}">${d.grade || 'C'}</div>
+    <div class="compare-risk" style="color:${color}">${getRiskLabel(d.risk_level)}</div>
+  </div>`;
+}
+
+function renderCompareDetails(d, other, isLeft) {
+  const s = d.privacy_score ?? 50;
+  const so = other.privacy_score ?? 50;
+  const trackers = d.trackers?.tracker_count || 0;
+  const otherTrackers = other.trackers?.tracker_count || 0;
+  const flags = (d.top_red_flags || []).length;
+  const otherFlags = (other.top_red_flags || []).length;
+  const transparency = d.transparency_score || 5;
+  const otherTransparency = other.transparency_score || 5;
+
+  const better = 'compare-better';
+  const worse = 'compare-worse';
+
+  return `
+  <div class="info-card" style="animation:fadeUp 0.4s 0.15s ease both">
+    <div class="compare-stat-row">
+      <span class="compare-stat-label">Privacy Score</span>
+      <span class="compare-stat-val ${s >= so ? better : worse}">${s}/100</span>
+    </div>
+    <div class="compare-stat-row">
+      <span class="compare-stat-label">Trackers</span>
+      <span class="compare-stat-val ${trackers <= otherTrackers ? better : worse}">${trackers}</span>
+    </div>
+    <div class="compare-stat-row">
+      <span class="compare-stat-label">Red Flags</span>
+      <span class="compare-stat-val ${flags <= otherFlags ? better : worse}">${flags}</span>
+    </div>
+    <div class="compare-stat-row">
+      <span class="compare-stat-label">Transparency</span>
+      <span class="compare-stat-val ${transparency >= otherTransparency ? better : worse}">${transparency}/10</span>
+    </div>
+    <div class="compare-stat-row">
+      <span class="compare-stat-label">Data Retention</span>
+      <span class="compare-stat-val">${d.data_retention || 'Unknown'}</span>
+    </div>
+    <div class="compare-stat-row">
+      <span class="compare-stat-label">User Control</span>
+      <span class="compare-stat-val">${d.user_control || 'Unknown'}</span>
+    </div>
+  </div>`;
+}
+
+function renderBar(label, value, max, color) {
+  const pct = Math.round((value / max) * 100);
+  return `
+  <div class="breakdown-row">
+    <span class="breakdown-label">${label}</span>
+    <div class="breakdown-track"><div class="breakdown-fill" data-target="${pct}" style="width:0%;background:${color}"></div></div>
+    <span class="breakdown-val">-${value}</span>
+  </div>`;
+}
+
+function animateResults() {
+  requestAnimationFrame(() => {
+    const ring = document.getElementById('ringFill');
+    if (ring) {
+      const score = parseInt(ring.closest('.score-card')?.querySelector('.score-number')?.textContent) || 50;
+      const circumference = 2 * Math.PI * 34;
+      ring.style.strokeDashoffset = circumference - (score / 100) * circumference;
+    }
+    document.querySelectorAll('.breakdown-fill[data-target]').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  });
+}
+
+function animateCompare() {
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.breakdown-fill[data-target]').forEach(el => {
+      el.style.width = el.dataset.target + '%';
+    });
+  });
+}
+
+document.getElementById('mainInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyze();
+});
+document.getElementById('compareInput1').addEventListener('keydown', e => {
+  if (e.key === 'Enter') compare();
+});
+document.getElementById('compareInput2').addEventListener('keydown', e => {
+  if (e.key === 'Enter') compare();
+});
+</script>
+</body>
+</html>

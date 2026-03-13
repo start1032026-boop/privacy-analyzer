@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+requests
+beautifulsoup4
+groq
+python-dotenv
+google-play-scraper
+
+# Run backend:
+# cd backend
+# python -m uvicorn main:app --reload
